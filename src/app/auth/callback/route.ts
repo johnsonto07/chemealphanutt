@@ -14,13 +14,17 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  // TODO(Johnson): check the allowlist.
-  // At this point the user is signed in and data.user.email is their Google email.
-  // 1. Query the "allowed_emails" table for a row whose email equals
-  //    data.user.email lowercased. Use supabase.from(...).select(...).eq(...).maybeSingle().
-  //    The RLS policy only lets a user see their own row, so you get the row or null.
-  // 2. If there is no row, call supabase.auth.signOut() and redirect to `${origin}/not-invited`.
-  // 3. Otherwise fall through to the redirect below.
+  const email = (data.user.email ?? "").toLowerCase();
+  const { data: allowed } = await supabase
+    .from("allowed_emails")
+    .select("email")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (!allowed) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/not-invited`);
+  }
 
   return NextResponse.redirect(`${origin}/`);
 }
